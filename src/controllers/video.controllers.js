@@ -149,13 +149,18 @@ const updateVideo = asyncHandler(async (req, res) => {
 const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: delete video
-    const video= Video.findById(videoId)
-
+    const video= await Video.findById(videoId)
+    
     if(!video){
         throw new ApiError(400,"Video does not exist")
     }
-    const oldVideo= video.thumbnailPublicId
-    const oldThumbnail = video.videoFilePublicId
+
+    if (video.owner?._id !== req.user?._id){
+        throw new ApiError(401, "Unauthorized Access")
+    }
+
+    const oldThumbnail = video.thumbnailPublicId
+    const oldVideo = video.videoFilePublicId
 
     const deleteVideoFile = await destroyFromCloudinary(oldVideo)
     const deleteThumbnail = await destroyFromCloudinary(oldThumbnail)
@@ -187,6 +192,46 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+
+    const video = await Video.findById(videoId)
+
+    if(!video){
+        throw new ApiError(400, "Video does not exist")
+    }
+
+    let toogling;
+    
+    if(video.isPublished=== true){
+            toogling = await Video.findByIdAndUpdate(videoId,{
+            isPublished: false
+        })
+    
+
+        if(!toogling){
+            throw new ApiError(500,"Error while unpublishing the video")
+        }
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(200,{isPublished: false},"Video Unpublished Successfully")
+        )
+    }
+    else{
+        toogling= await Video.findByIdAndUpdate(videoId,{
+            isPublished: true
+        })
+
+        if(!toogling){
+            throw new ApiError(500, "Error while publishing the video")
+        }
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(200,{isPublished: true},"Video Published Successfully")
+        )
+    }
 })
 
 export {
