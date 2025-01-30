@@ -10,8 +10,82 @@ import { destroyFromCloudinary, uploadOnCloudinary } from "../utils/Cloudinary.j
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
+    const { page = 1, limit = 10, query, sortBy="views", sortType=1, userId } = req.query
     //TODO: get all videos based on query, sort, pagination
+
+    const userQuery = {
+        $and:[
+            {isPublished: true}
+        ]
+    }
+    
+    if(query){
+        userQuery.$or=[   
+            {
+                title:{$regex: query, $options: "i"}
+            },
+            {
+                description: {$regex: query, $options: "i"}
+            }
+        ]
+    }
+
+    if(userId){
+        userQuery.$and=[
+            {
+                owner: new mongoose.Types.ObjectId(userId)
+            }
+        ]
+    }
+
+    const pipeline=[
+        {
+            $match: userQuery 
+        },
+        {
+            $lookup:{
+                from: "users",
+                localField:"owner",
+                foreignField:"_id",
+                as:"videoOwner",
+            }
+        },
+        {
+            $unwind: "$videoOwner"
+        },
+        {           
+            $project:{
+                title: 1,
+                description: 1,
+                thumbnail: 1,
+                videoFile: 1,
+                videoOwner:{
+                    fullName:1,
+                    avatar:1,
+                    coverImage:1
+                }
+            }
+        },
+        {
+            $sort:{
+                [sortBy]:sortType==="asc"? 1: -1,
+            }
+        }
+    ]
+
+
+    try {
+        const paginatedVideos=  await Video.aggregatePaginate(Video.aggregate(pipeline),{page,limit})
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(200,paginatedVideos,"Videos Fetched Successfully")
+        )    
+    } catch (error) {
+        throw new ApiError(401,"Could Not Paginate the Videos")
+        
+    }
+    
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
