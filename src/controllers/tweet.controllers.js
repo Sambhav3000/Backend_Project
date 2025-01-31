@@ -7,6 +7,31 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 
 const createTweet = asyncHandler(async (req, res) => {
     //TODO: create tweet
+    const {content} = req.body
+
+    const owner = await User.findById(req.user._id).select("_id username fullName avatar")
+
+
+    if (!content?.trim()){
+        throw new ApiError(401,"Content cannot be empty")
+    }
+
+    const tweet = await Tweet.create({
+        content,
+        owner
+    })
+
+    if(!tweet){
+        throw new ApiError(501,"Error saving the tweet")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(201,tweet,"Tweet Successfully Created")
+    )
+
+
 })
 
 const getUserTweets = asyncHandler(async (req, res) => {
