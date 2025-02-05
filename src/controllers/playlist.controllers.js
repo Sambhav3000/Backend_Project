@@ -225,7 +225,44 @@ const deletePlaylist = asyncHandler(async (req, res) => {
 const updatePlaylist = asyncHandler(async (req, res) => {
     const {playlistId} = req.params
     const {name, description} = req.body
+    
     //TODO: update playlist
+    if (!playlistId){
+        throw new ApiError(402,"Playlist Id is Required")
+    }
+
+    if(!name || !description || [name,description].some((field)=>field?.trim())===0){
+        throw new ApiError(402,"Name and Description are Required")
+    }
+
+    if(!isValidObjectId(playlistId)){
+        throw new ApiError(502,"Invalid Playlist Id")
+    }
+
+    const existence = await Playlist.findById(playlistId)
+
+    if(!existence){
+        throw new ApiError(502,"Playlist Does Not Exist")
+    }
+
+    const playlist = await Playlist.find({_id: playlistId, owner:req.user._id})
+
+    if(playlist.length===0){
+        throw new ApiError(502,"Cannot Make Changes to Other User's Playlist")
+    }
+
+    const realPlaylist = await Playlist.findByIdAndUpdate(playlistId,{$set:{name,description}},{new:true})
+
+    if(!realPlaylist){
+        throw new ApiError(503,"Error while Updating the Playlist")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200,realPlaylist,"Playlist Updated Successfully")
+    )
+
 })
 
 export {
