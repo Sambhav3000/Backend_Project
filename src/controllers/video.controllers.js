@@ -138,12 +138,11 @@ const publishAVideo = asyncHandler(async (req, res) => {
         description,
         duration:videoFile.duration,
         views:0,
+        isPublished:true,
         owner: owner
     })
 
-    const findVideo= await Video.findById(video.id)
-
-    if(!findVideo){
+    if(!video){
         throw new ApiError(501,"Error Uploading the Video");
     }
 
@@ -159,7 +158,9 @@ const publishAVideo = asyncHandler(async (req, res) => {
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: get video by id
-    const video = await Video.findById(videoId)
+    
+    const video = await Video.findByIdAndUpdate(videoId,{$inc:{views:1}},{new: true})
+
     return res
     .status(200)
     .json(
